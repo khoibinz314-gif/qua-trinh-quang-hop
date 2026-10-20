@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quá trình quang hợp ở cây xanh</title>
+<style>
+:root{--pn:rgba(255,255,255,.94);--ln:#d3dfeb;--tx:#1a2430;--mu:#5b6b7b;--ac:#1f9d55;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:linear-gradient(#cfe3f5,#eef5fc);color:var(--tx);font-family:"Be Vietnam Pro","Segoe UI",system-ui,sans-serif;overflow:hidden}
+canvas{display:block;position:fixed;inset:0;width:100%;height:100%;touch-action:none}
+.pn{position:fixed;background:var(--pn);border:1px solid var(--ln);border-radius:16px;padding:14px;box-shadow:0 6px 22px rgba(40,70,110,.18);z-index:2}
+#L{left:12px;top:calc(12px + env(safe-area-inset-top,0px));width:250px;max-height:calc(100% - 24px);overflow:auto}
+#I{right:12px;top:calc(12px + env(safe-area-inset-top,0px));width:310px;max-height:calc(100% - 24px);overflow:auto}
+h1{font-size:17px;margin:0 0 8px;line-height:1.3}h2{font-size:12.5px;margin:12px 0 5px;color:var(--mu);font-weight:600}
+button{font:inherit;font-size:12.5px;color:var(--tx);background:#fff;border:1px solid #c5d3e1;border-radius:9px;padding:6px 9px;margin:2px;cursor:pointer}
+button:hover{background:#eef5fb}button:focus-visible{outline:2px solid var(--ac)}
+button.off{opacity:.45;text-decoration:line-through}button.on{border-color:var(--ac)}button.pri{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:600}
+.d{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+#I h3{margin:0 0 6px;font-size:16px;color:var(--ac)}#I p{margin:0 0 8px;font-size:13.5px;line-height:1.55}#I small{color:var(--mu)}
+#L.mini>:not(h1):not(.top){display:none}#ix{position:absolute;right:8px;top:8px;width:30px;height:30px;padding:0;margin:0;border-radius:50%;line-height:1;color:var(--mu)}#I h3{padding-right:32px}#I.hide{display:none}#sp{position:fixed;left:64px;top:210px;font-size:38px;pointer-events:none;z-index:1}
+@media(max-width:760px){#sp{display:none}#L{width:48%;max-height:42%;top:auto;bottom:calc(10px + env(safe-area-inset-bottom,0px))}#I{width:calc(52% - 34px);max-height:42%;top:auto;bottom:calc(10px + env(safe-area-inset-bottom,0px))}}
+</style></head><body>
+<div class="pn" id="L"><h1>Quá trình quang hợp ở cây cà phê</h1>
+<div class="top"><button id="rs" class="pri">Đặt lại góc nhìn</button><button id="cl">Thu gọn</button></div>
+<h2>Bật / tắt các chất</h2><div id="gas"></div>
+<h2>Điều khiển</h2><div><button id="rot" class="on">Tự xoay: Bật</button><button id="lab" class="on">Nhãn: Bật</button></div>
+<h2>Đi tới</h2><div id="fc"></div></div>
+<div class="pn" id="I"><button id="ix" aria-label="Đóng" title="Đóng">✕</button><div id="ib"><h3>Chạm vào mô hình</h3><p>Nhấn vào lá, khí khổng, lục lạp, rễ, thân, mặt trời… để xem giải thích, camera sẽ tự bay tới bộ phận đó. Kéo để xoay, cuộn hoặc chụm hai ngón để thu phóng, kéo chuột phải (hai ngón) để di chuyển.</p></div></div>
+<div id="sp">✨</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const INFO={
+sun:["Mặt trời – ánh sáng","Nguồn năng lượng của quang hợp. Diệp lục hấp thụ chủ yếu ánh sáng đỏ và xanh lam rồi chuyển thành năng lượng hóa học."],
+leaf:["Lá cà phê","Phiến lá rộng, bóng, nhận nhiều ánh sáng. Thịt lá chứa nhiều lục lạp, mặt dưới có khí khổng để trao đổi khí. Gân lá dẫn nước, khoáng vào và đưa đường ra."],
+stomata:["Khí khổng","Lỗ nhỏ ở biểu bì lá, do 2 tế bào hình hạt đậu đóng mở. Ban ngày khí khổng mở: CO₂ đi vào, O₂ và hơi nước thoát ra. Khi thiếu nước hoặc ban đêm, khí khổng khép lại."],
+guard:["Tế bào bảo vệ","Khi no nước, tế bào phồng lên và cong ra làm khe mở. Khi mất nước, tế bào xẹp lại làm khe đóng, giúp cây hạn chế mất nước."],
+mesophyll:["Thịt lá","Các tế bào chứa rất nhiều lục lạp, là nơi diễn ra quang hợp. Khoảng trống giữa các tế bào giúp CO₂ khuếch tán tới lục lạp."],
+epidermis:["Biểu bì lá","Lớp tế bào ngoài cùng, có lớp cutin chống mất nước. Biểu bì dưới có nhiều khí khổng."],
+chloroplast:["Lục lạp","Bào quan quang hợp, có màng kép. Bên trong là chất nền (stroma) và các túi dẹt thylakoid xếp chồng thành hạt grana chứa diệp lục. Pha sáng xảy ra ở thylakoid, pha tối (chu trình Calvin) xảy ra ở stroma."],
+grana:["Hạt grana – Pha sáng","Màng thylakoid hấp thụ ánh sáng, quang phân li nước: 2H₂O → O₂ + H⁺ + e⁻. Năng lượng lưu vào ATP và NADPH. O₂ thải ra ngoài, ATP và NADPH chuyển sang stroma cho chu trình Calvin."],
+calvin:["Chu trình Calvin – Pha tối","Xảy ra ở stroma, gồm 3 giai đoạn. (1) Cố định CO₂: RuBisCO gắn CO₂ vào RuDP (5C) tạo APG (3C). (2) Khử: dùng ATP và NADPH biến APG thành AlPG. (3) Tái tạo RuDP để chu trình tiếp tục. Cứ 6 vòng tạo ra 1 phân tử glucose."],
+fix:["Giai đoạn 1: Cố định CO₂","Enzyme RuBisCO gắn CO₂ vào RuDP (5C), tạo hợp chất 6C không bền rồi tách ngay thành 2 phân tử APG (3C). Đây là bước đưa carbon từ khí CO₂ vào chất hữu cơ."],
+red:["Giai đoạn 2: Khử APG","ATP cung cấp năng lượng, NADPH cung cấp điện tử và hydro để khử APG thành AlPG (3C). Sau bước này ATP thành ADP và NADPH thành NADP⁺, quay về pha sáng để được nạp lại."],
+reg:["Giai đoạn 3: Tái tạo RuDP","Phần lớn AlPG, cùng thêm ATP, được dùng để tái tạo RuDP (5C) nên chu trình tiếp tục. Một phần AlPG rời chu trình để tổng hợp glucose. Cần 6 vòng để tạo 1 phân tử glucose (6C)."],
+rubp:["RuDP (5C)","Chất nhận CO₂. Enzyme RuBisCO gắn CO₂ vào RuDP tạo hợp chất 6C không bền, tách ngay thành 2 phân tử APG."],
+pga:["APG (3C)","Sản phẩm đầu tiên của cố định CO₂. Được ATP và NADPH khử thành AlPG."],
+g3p:["AlPG (3C)","Đường 3 carbon. Một phần rời chu trình để tổng hợp glucose, tinh bột, phần còn lại tái tạo RuDP."],
+trunk:["Thân cây","Nâng đỡ tán lá, vận chuyển hai chiều: mạch gỗ đưa nước và khoáng đi lên, mạch rây đưa đường từ lá đi xuống."],
+xylem:["Mạch gỗ – đi lên","Vận chuyển nước và muối khoáng từ rễ lên lá nhờ lực hút do thoát hơi nước ở lá, lực đẩy của rễ và lực kết dính giữa các phân tử nước."],
+phloem:["Mạch rây – đi xuống","Vận chuyển đường (saccarozơ) tạo ra từ quang hợp từ lá đến rễ, thân, hoa, quả để dùng hoặc dự trữ."],
+root:["Rễ","Giữ cây trong đất, hút nước và muối khoáng rồi đẩy lên mạch gỗ của thân. Hệ rễ gồm rễ cọc, rễ bên và nhiều nhánh nhỏ phân nhánh dày. Rễ cũng nhận đường từ lá để dự trữ và hô hấp."],
+roothair:["Lông hút","Tế bào biểu bì rễ kéo dài thành lông mảnh, tăng mạnh diện tích tiếp xúc với đất. Hút nước bằng thẩm thấu, hút khoáng bằng vận chuyển chủ động, rồi chuyển vào mạch gỗ."],
+soil:["Đất","Chứa nước và muối khoáng hòa tan (N, P, K…). Rễ lấy chúng qua lông hút."],
+co2:["Khí CO₂","Nguyên liệu của quang hợp, vào lá qua khí khổng, đến lục lạp và được cố định trong chu trình Calvin."],
+o2:["Khí O₂","Sản phẩm phụ của pha sáng, sinh ra khi nước bị quang phân. O₂ thoát ra qua khí khổng, một phần dùng cho hô hấp."],
+glucose:["Glucose / đường","Sản phẩm của quang hợp. Cây dùng để hô hấp, tạo tinh bột, xenlulozơ và vận chuyển đi nuôi cây qua mạch rây."],
+water:["Nước (H₂O)","Rễ hút vào, theo mạch gỗ lên lá. Ở lục lạp, nước bị quang phân cho e⁻, H⁺ và O₂."],
+mineral:["Muối khoáng","Rễ hút cùng nước. Cần để tạo diệp lục (Mg, N), enzyme, ATP… giúp cây sinh trưởng."],
+light:["Photon ánh sáng","Hạt năng lượng ánh sáng, được diệp lục hấp thụ ở pha sáng."],
+atp:["ATP và NADPH","Hợp chất mang năng lượng và điện tử, tạo ở pha sáng và chuyển sang stroma để vận hành chu trình Calvin."]};
+const sc=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.1,200);
+const HOME={p:new THREE.Vector3(0,9,29*Math.max(1,1.8/(innerWidth/innerHeight))),t:new THREE.Vector3(0,3.2,0)};cam.position.copy(HOME.p);
+const rd=new THREE.WebGLRenderer({antialias:true,alpha:true});rd.setPixelRatio(Math.min(devicePixelRatio,2));rd.setSize(innerWidth,innerHeight);document.body.prepend(rd.domElement);
+const ct=new THREE.OrbitControls(cam,rd.domElement);ct.target.copy(HOME.t);ct.enableDamping=true;ct.autoRotate=true;ct.autoRotateSpeed=.7;ct.maxDistance=70;ct.minDistance=3;
+sc.add(new THREE.HemisphereLight(0xffffff,0xdfe8d0,.7));
+const dl=new THREE.DirectionalLight(0xffffff,.55);dl.position.set(8,20,14);sc.add(dl);
+const pick=[],labels=[];
+function M(g,c,k,o={}){const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.6},o)));if(k){m.userData.k=k;pick.push(m)}return m}
+function at(m,x,y,z,p){m.position.set(x,y,z);(p||sc).add(m);return m}
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z),rn=(a,b)=>a+Math.random()*(b-a);
+function lbl(t,x,y,z,k,s=3.4){const c=document.createElement('canvas');c.width=512;c.height=96;const g=c.getContext('2d');g.font='500 42px "Segoe UI",sans-serif';const w=Math.min(g.measureText(t).width+54,500),x0=256-w/2;
+g.shadowColor='rgba(40,70,110,.25)';g.shadowBlur=8;g.fillStyle='#fff';g.beginPath();g.moveTo(x0+30,10);g.arcTo(x0+w,10,x0+w,86,38);g.arcTo(x0+w,86,x0,86,38);g.arcTo(x0,86,x0,10,38);g.arcTo(x0,10,x0+w,10,38);g.fill();
+g.shadowBlur=0;g.fillStyle='#1a2430';g.textAlign='center';g.fillText(t,256,64);
+const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));sp.scale.set(5.87,1.1,1);sp.position.set(x,y,z);sp.renderOrder=9;sp.userData.k=k;sc.add(sp);labels.push(sp);pick.push(sp)}
+// Mặt trời + quầng sáng
+const sun=at(new THREE.Mesh(new THREE.SphereGeometry(2.1,32,24),new THREE.MeshBasicMaterial({color:0xfff68a})),0,15,-4);sun.userData.k='sun';pick.push(sun);
+at(new THREE.Mesh(new THREE.SphereGeometry(4.2,32,24),new THREE.MeshBasicMaterial({color:0xe9eadf,transparent:true,opacity:.7,depthWrite:false})),0,15,-4.6);
+// Chậu, cỏ
+const pot=at(M(new THREE.CylinderGeometry(5,3.2,5,64,1,true),0x8a5a30,'soil',{transparent:true,opacity:.5,side:THREE.DoubleSide,depthWrite:false}),0,-2.5,0);
+at(M(new THREE.CylinderGeometry(3.2,3.2,.06,48),0x6b4423,null),0,-5,0);
+at(M(new THREE.CylinderGeometry(5,5,.3,64),0x7a4a26,'soil'),0,-.15,0);
+// Thân cà phê + mạch dẫn
+at(M(new THREE.CylinderGeometry(.13,.17,10,16),0xa9d68a,'trunk',{transparent:true,opacity:.5}),0,5,0);
+at(M(new THREE.CylinderGeometry(.045,.045,10.4,10),0x3b8ef0,'xylem'),-.04,4.9,.02);
+at(M(new THREE.CylinderGeometry(.04,.04,10.4,10),0xff9a2e,'phloem'),.06,4.9,-.02);
+at(M(new THREE.SphereGeometry(.2,12,12),0x4fb04a,'leaf'),0,10.1,0);
+// Lá cà phê: bóng, gân rõ, có khí khổng
+function leafTex(a,b){const c=document.createElement('canvas');c.width=256;c.height=100;const g=c.getContext('2d');
+const gr=g.createLinearGradient(0,0,0,100);gr.addColorStop(0,a);gr.addColorStop(1,b);g.fillStyle=gr;g.beginPath();g.moveTo(2,50);g.bezierCurveTo(40,2,170,4,254,50);g.bezierCurveTo(170,96,40,98,2,50);g.fill();g.strokeStyle='rgba(12,60,26,.55)';g.lineWidth=4;g.stroke();
+g.strokeStyle='rgba(215,240,170,.85)';g.lineWidth=2.6;g.beginPath();g.moveTo(2,50);g.lineTo(254,50);g.stroke();g.lineWidth=1.2;
+for(let i=0;i<9;i++){const x=30+i*22;[-1,1].forEach(s=>{g.beginPath();g.moveTo(x,50);g.quadraticCurveTo(x+14,50+s*14,x+34,50+s*(30-i*1.6));g.stroke()})}
+g.fillStyle='rgba(255,255,255,.12)';g.beginPath();g.ellipse(120,34,80,9,-.06,0,7);g.fill();g.fillStyle='rgba(10,60,25,.5)';for(let i=0;i<90;i++){const x=rn(30,230),y=rn(22,78);g.beginPath();g.ellipse(x,y,2.4,1.3,rn(0,3),0,7);g.fill()}
+return new THREE.CanvasTexture(c)}
+const lm=[leafTex('#3fae48','#1f7a2c'),leafTex('#4cbb4c','#26883a'),leafTex('#2f9a40','#176a28')].map(t=>new THREE.MeshStandardMaterial({map:t,alphaTest:.5,side:THREE.DoubleSide,roughness:.35,metalness:.05}));
+const leafPts=[];function leafGeo(L){const g=new THREE.PlaneGeometry(L,L*.46,14,4);g.translate(L/2,0,0);const p=g.attributes.position,h=L*.23,ph=rn(0,6);for(let i=0;i<p.count;i++){const u=p.getX(i)/L,v=p.getY(i)/h,a=Math.abs(v);p.setZ(i,L*(.2*u-.4*u*u)+L*.07*a*(1-u*.6)+L*.02*a*Math.sin(u*16+ph)+L*.025*v*u)}g.rotateX(-1.05);g.computeVertexNormals();return g}
+for(let n=0;n<10;n++){const y=1.3+n*.85+rn(-.15,.15);for(let s=0;s<(n%3==2?1:2);s++){const L=(3.6-n*.14)*rn(.8,1.15);const g=leafGeo(L);
+const l=new THREE.Mesh(g,lm[(n+s)%3]);l.position.set(0,y,0);l.rotation.y=n*2.4+s*(2.6+rn(-.5,.5))+rn(-.3,.3);l.rotation.x=rn(-.3,.3);l.rotation.z=rn(-.3,.3);l.userData.k='leaf';sc.add(l);pick.push(l);leafPts.push(V3(Math.cos(-l.rotation.y)*L*.6,y,Math.sin(-l.rotation.y)*L*.6))}}
+for(let b=0;b<7;b++){const y0=2.2+b*1.05+rn(-.2,.2),az=b*2.4+rn(-.4,.4),len=rn(1.8,3),dx=Math.cos(az),dz=Math.sin(az);
+const cv=new THREE.CatmullRomCurve3([V3(0,y0,0),V3(dx*len*.4,y0+.35,dz*len*.4),V3(dx*len*.8,y0+.55,dz*len*.8),V3(dx*len,y0+.45,dz*len)]);
+at(M(new THREE.TubeGeometry(cv,10,.055,6),0x6a8f3c,'trunk'),0,0,0);
+for(let j=0;j<5;j++){const q=cv.getPoint(j==4?1:.3+j*.17);for(let s=0;s<(j==4?1:2);s++){if(j<4&&Math.random()<.3)continue;const L=rn(1.6,2.6),th=-az+(j==4?rn(-.2,.2):(s?1:-1)*rn(.6,1.3));
+const l=new THREE.Mesh(leafGeo(L),lm[(j+s+b)%3]);l.position.copy(q);l.rotation.set(rn(-.25,.25),th,rn(-.25,.25));l.userData.k='leaf';sc.add(l);pick.push(l);leafPts.push(V3(q.x+Math.cos(th)*L*.6,q.y,q.z-Math.sin(th)*L*.6))}}}
+// Rễ: cọc + rễ bên + nhánh nhỏ, thu nhỏ dần, rất nhiều lông hút
+const RB=[],hv=[],hairs=[];
+const lim=y=>4.55+.36*y;
+function grow(st,dir,len,segs,dep,chain,own){const pts=[st.clone()],cur=st.clone(),d=dir.clone(),step=len/segs;
+for(let i=0;i<segs;i++){d.x+=rn(-.2,.2);d.z+=rn(-.2,.2);d.y+=(dep?-.05:-.02)+rn(-.08,.08);if(dep){d.x+=cur.x*.035;d.z+=cur.z*.035}d.normalize();cur.addScaledVector(d,step);
+if(cur.y<-4.7){cur.y=-4.7;d.y=Math.abs(d.y)*.2}if(cur.y>-.3){cur.y=-.3;d.y=-Math.abs(d.y)}
+const r=Math.hypot(cur.x,cur.z),m=lim(cur.y)-.12;if(r>m){cur.x*=m/r;cur.z*=m/r;const nx=cur.x/m,nz=cur.z/m,dn=d.x*nx+d.z*nz;if(dn>0){d.x-=dn*nx;d.z-=dn*nz}d.y-=.12;d.normalize()}pts.push(cur.clone())}
+const ch=chain.concat(pts.slice(1));const cv=new THREE.CatmullRomCurve3(pts);const rad=[.16,.11,.065,.04][dep],sg=segs*3;
+const g=new THREE.TubeGeometry(cv,sg,rad,5);const pp=g.attributes.position;for(let i=0;i<=sg;i++){const c=cv.getPointAt(i/sg),f=1-.75*i/sg;for(let j=0;j<=5;j++){const k=i*6+j;pp.setXYZ(k,c.x+(pp.getX(k)-c.x)*f,c.y+(pp.getY(k)-c.y)*f,c.z+(pp.getZ(k)-c.z)*f)}}
+at(M(g,[0xd9a441,0xe3b455,0xecc16a,0xf2cd82][dep],'root',{roughness:.9}),0,0,0);
+RB.push(ch);const base=chain.length;
+if(dep>=1){const nh=[0,4,6,3][dep];for(let i=0;i<nh;i++){const idx=1+Math.floor(Math.random()*segs),p=pts[idx],hd=V3(rn(-1,1),rn(-.7,.7),rn(-1,1)).normalize(),e=p.clone().addScaledVector(hd,rn(.18,.4));hv.push(p.x,p.y,p.z,e.x,e.y,e.z);hairs.push({e,ci:base+idx-1,ch})}}
+if(dep<3){const nc=[14,4,2][dep];for(let i=0;i<nc;i++){const idx=Math.max(1,Math.floor((dep?rn(.25,1):rn(.08,.85))*segs)),p=pts[idx],a=(i/nc)*6.283+rn(-.3,.3)+dep*1.1,cd=V3(Math.cos(a),dep?-.12:-.38,Math.sin(a)).normalize();grow(p,cd,dep?rn(.8,1.4)*(dep==1?1.9:1):rn(4.5,6.5),dep?6:10,dep+1,ch.slice(0,base+idx),0)}}}
+grow(V3(0,-.3,0),V3(0,-1,0),4.4,10,0,[V3(0,-.3,0)],0);
+const hg=new THREE.BufferGeometry();hg.setAttribute('position',new THREE.Float32BufferAttribute(hv,3));
+const hl=new THREE.LineSegments(hg,new THREE.LineBasicMaterial({color:0xfff0c8,transparent:true,opacity:.7}));
+// Chu trình Calvin (trái)
+const R=V3(-11,5.5,0),RR=3;
+const SC=[0xa855d6,0x17b897,0xf5a023],SK=['fix','red','reg'];at(M(new THREE.CircleGeometry(RR+1,48),0xdff3e6,'calvin',{transparent:true,opacity:.5,side:THREE.DoubleSide,depthWrite:false}),R.x,R.y,-.4);
+SC.forEach((c,i)=>{const s=Math.PI/2+i*2.0944+.14,a=2.0944-.28;const r=at(M(new THREE.TorusGeometry(RR,.2,14,40,a),c,SK[i],{emissive:c,emissiveIntensity:.35}),R.x,R.y,0);r.rotation.z=s;const e=s+a+.07;const cn=at(M(new THREE.ConeGeometry(.42,.8,16),c,SK[i],{emissive:c,emissiveIntensity:.35}),R.x+RR*Math.cos(e),R.y+RR*Math.sin(e),0);cn.rotation.z=e});
+const ang=[90,330,210].map(a=>a*Math.PI/180);
+const nodes=[];[[0xa855d6,'rubp'],[0xf5a023,'g3p'],[0x17b897,'pga']].forEach((n,i)=>{const m=at(M(new THREE.SphereGeometry(.7,24,18),n[0],n[1],{roughness:.3,emissive:n[0],emissiveIntensity:.25}),R.x+RR*Math.cos(ang[i]),R.y+RR*Math.sin(ang[i]),0);m.add(new THREE.Mesh(new THREE.SphereGeometry(1.15,20,14),new THREE.MeshBasicMaterial({color:n[0],transparent:true,opacity:.22,depthWrite:false})));nodes.push(m)});
+at(M(new THREE.SphereGeometry(.17,12,12),0xffffff,null),R.x+RR,R.y,0);
+const orb=[];for(let i=0;i<15;i++)orb.push(at(M(new THREE.SphereGeometry(.16,10,10),0xffffff,null,{emissive:0xffffff,emissiveIntensity:.6}),R.x,R.y,0));
+lbl('Chu trình Calvin',-11,11.3,0,'calvin');lbl('6 vòng → 1 glucose',R.x,R.y,0,'calvin');lbl('RuDP (5C)',-11,R.y+RR+1,0,'rubp');lbl('AlPG (3C)',-7.2,R.y-RR*.5-1,0,'g3p');lbl('APG (3C)',-14.8,R.y-RR*.5-1,0,'pga');
+lbl('1. Cố định CO₂',-15.7,8.4,0,'fix');lbl('2. Khử APG',-11,.1,0,'red');lbl('3. Tái tạo RuDP',-6.3,8.4,0,'reg');lbl('CO₂ vào',-18.3,R.y+.5,0,'co2');lbl('ATP + NADPH',-5.2,6.4,0,'atp');lbl('Glucose ra',-5.6,1.2,0,'glucose');
+// Lục lạp (phải)
+const C=V3(12,3.5,0),CG=new THREE.Group();CG.position.copy(C);CG.scale.setScalar(1.15);sc.add(CG);
+const sh=at(M(new THREE.SphereGeometry(1,40,28),0xbdf0d4,'chloroplast',{transparent:true,opacity:.75,depthWrite:false}),0,0,0,CG);sh.scale.set(3.6,2.7,2.3);
+[-1.6,-.5,.6,1.7].forEach((x,i)=>{for(let k=0;k<4;k++)at(M(new THREE.CylinderGeometry(.5,.5,.14,28),0x2ee05a,'grana',{emissive:0x0b5a1c,emissiveIntensity:.3}),x,-.55+k*.2+(i%2?.4:0),i%2?.5:-.4,CG)});
+lbl('Lục lạp',12,7.6,0,'chloroplast');
+// Khí khổng phóng to (phải trên)
+const P=V3(13,12.5,0),PG=new THREE.Group();PG.position.copy(P);PG.scale.setScalar(.7);sc.add(PG);
+[-1,1].forEach(s=>{at(M(new THREE.BoxGeometry(3.2,.4,3),0x7fd36a,'epidermis'),s*2.9,0,0,PG);
+const g=at(M(new THREE.SphereGeometry(.5,24,16),0x2f9a3a,'guard'),s*.75,0,0,PG);g.scale.set(.65,.45,1.5);PG.userData['g'+s]=g});
+at(M(new THREE.BoxGeometry(8,.3,3),0xb5e6a5,'epidermis',{transparent:true,opacity:.4}),0,3.6,0,PG);
+for(let i=0;i<9;i++){const c=at(M(new THREE.SphereGeometry(.75,16,12),0x5cc060,'mesophyll',{transparent:true,opacity:.6}),-3+(i%5)*1.5+(i>4?.7:0),i>4?1.9:1.1,rn(-.6,.6),PG);c.scale.y=1.15;
+for(let j=0;j<3;j++)at(M(new THREE.SphereGeometry(.12,8,8),0x1b8a30,'chloroplast'),c.position.x+rn(-.3,.3),c.position.y+rn(-.3,.3),c.position.z+.5,PG)}
+lbl('Khí khổng (phóng to)',13,15.8,0,'stomata');
+// Nhãn trên cây (giống mô hình mẫu)
+lbl('Mặt trời',-4,15.2,0,'sun',2.6);lbl('Mạch gỗ',1.7,6.3,.5,'xylem',2.5);lbl('Khí khổng',3.4,4.5,1.6,'stomata',2.6);lbl('Mạch rây',-1.9,4.9,.5,'phloem',2.5);
+lbl('Thân',-1.2,1.1,.8,'trunk',1.7);lbl('Đất',1.9,.1,3,'soil',1.7);lbl('Rễ',-1.4,-1.3,3.4,'root',1.4);lbl('Rễ nhánh',1.4,-2.6,3.4,'root');
+// Đường nét đứt
+function dash(a,b){const g=new THREE.BufferGeometry().setFromPoints([a,b]);const l=new THREE.Line(g,new THREE.LineDashedMaterial({color:0x5a6472,dashSize:.35,gapSize:.25}));l.computeLineDistances();sc.add(l)}
+dash(V3(2.4,7.2,0),V3(7.9,4.1,0));dash(V3(2.4,8.2,0),V3(10.5,12,0));dash(V3(R.x+RR,R.y,0),V3(7.9,3.6,0));
+// Hạt tròn nhỏ
+function dotTex(){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');g.fillStyle='#fff';g.beginPath();g.arc(32,32,28,0,7);g.fill();return new THREE.CanvasTexture(c)}
+const DT=dotTex();
+const TY={co2:['CO₂',0x8a949c,.26],o2:['O₂',0xe8505b,.26],glucose:['Glucose',0xf5a623,.34],water:['H₂O',0x3fb4ff,.34],mineral:['Muối khoáng',0xff6fcf,.34],light:['Ánh sáng',0xe8c548,.2],atp:['ATP / NADPH',0xa855d6,.26]};
+const PS={};for(const k in TY)PS[k]={cv:[],sp:[],ph:[]};
+function add(k,cv,sp){PS[k].cv.push(cv);PS[k].sp.push(sp);PS[k].ph.push(Math.random())}
+const bz=(a,b,m)=>{const c=m?m.clone().multiplyScalar(2).sub(a.clone().add(b).multiplyScalar(.5)):a.clone().lerp(b,.5);return new THREE.QuadraticBezierCurve3(a,c,b)};
+// Ánh sáng từ mặt trời xuống lá
+for(let i=0;i<110;i++)add('light',bz(sun.position.clone().add(V3(rn(-1.2,1.2),-1.6,0)),leafPts[Math.floor(Math.random()*leafPts.length)].clone().add(V3(rn(-.5,.5),.3,rn(-.5,.5)))),rn(.1,.16));
+// CO2 vào / O2 ra quanh lá
+for(let i=0;i<90;i++){const lp=leafPts[Math.floor(Math.random()*leafPts.length)],d=V3(rn(-1,1),rn(-.3,1),rn(-1,1)).normalize(),o=lp.clone().addScaledVector(d,rn(4,9));add('co2',bz(o,lp.clone()),rn(.07,.12));
+const d2=V3(rn(-1,1),rn(-.3,1),rn(-1,1)).normalize();add('o2',bz(lp.clone(),lp.clone().addScaledVector(d2,rn(4,9))),rn(.07,.12))}
+// Khí khổng phóng to
+for(let i=0;i<22;i++){const a=P.clone().add(V3(rn(-2,2),rn(-3.5,-2.5),rn(-.6,.6))),b=P.clone().add(V3(rn(-2,2),rn(.8,1.8),rn(-.4,.4)));add('co2',bz(a,b,P.clone()),.12);add('o2',bz(b,a,P.clone()),.12)}
+// Nước, khoáng: lông hút -> rễ -> mạch gỗ -> lá
+const xy=[V3(-.04,.1,0),V3(-.04,2.5,0),V3(-.04,5,0),V3(-.1,7.2,0),V3(0,9,0)];
+for(let i=0;i<hairs.length;i+=3){const h=hairs[i],pts=[h.e.clone().add(V3(rn(-.9,.9),rn(-.7,.7),rn(-.9,.9))),h.e];for(let j=h.ci;j>=0;j-=2)pts.push(h.ch[j]);pts.push(...xy);const c=new THREE.CatmullRomCurve3(pts);add('water',c,rn(.03,.05));if(i%2==0)add('mineral',c,rn(.03,.045))}
+// Đường: lá -> mạch rây -> rễ
+for(let i=0;i<70;i++){const ch=RB[Math.floor(Math.random()*RB.length)],pts=[leafPts[i%leafPts.length].clone().multiplyScalar(.3).add(V3(0,rn(0,.5),0)),V3(.06,6,0),V3(.06,3,0),V3(.06,.1,0)];for(let j=1;j<ch.length;j+=2)pts.push(ch[j]);add('glucose',new THREE.CatmullRomCurve3(pts),rn(.018,.03))}
+// Lục lạp và Calvin
+for(let i=0;i<14;i++){add('water',bz(C.clone().add(V3(rn(-8,-5),rn(-2,2),rn(-1,1))),C.clone().add(V3(rn(-2,2),-.2,rn(-.5,.5)))),.1);
+add('o2',bz(C.clone().add(V3(rn(-2,2),.2,rn(-.5,.5))),C.clone().add(V3(rn(-5,5),rn(5,8),rn(-2,2)))),.1);
+add('atp',bz(C.clone().add(V3(rn(-2.4,-1.5),-.4,0)),R.clone().add(V3(rn(2,3),rn(-1,1),0))),.12);
+add('co2',bz(R.clone().add(V3(rn(-7,-5),rn(-2,3),rn(-1,1))),R.clone().add(V3(-2.5,1.8,0))),.1)}
+for(let i=0;i<8;i++)add('glucose',bz(R.clone().add(V3(2.5,-1.7,0)),R.clone().add(V3(rn(-3,3),rn(-5,-4),rn(-1,1)))),.1);
+const pts={};
+for(const k in PS){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(PS[k].cv.length*3),3));
+const p=new THREE.Points(g,new THREE.PointsMaterial({color:TY[k][1],size:TY[k][2]*1.6,map:DT,alphaTest:.3,transparent:true,depthWrite:false}));p.frustumCulled=false;sc.add(p);pts[k]=p}
+// Giao diện
+const gas=document.getElementById('gas'),st={},inf=document.getElementById('I');
+function show(k){const i=INFO[k];if(i){document.getElementById('ib').innerHTML='<h3>'+i[0]+'</h3><p>'+i[1]+'</p><small>Nhấn vào bộ phận khác để tìm hiểu tiếp.</small>';inf.classList.remove('hide')}}document.getElementById('ix').onclick=()=>inf.classList.add('hide');
+for(const k in TY){const b=document.createElement('button');b.className='on';b.innerHTML='<span class="d" style="background:#'+TY[k][1].toString(16).padStart(6,'0')+'"></span>'+TY[k][0];st[k]=1;
+b.onclick=()=>{st[k]^=1;pts[k].visible=!!st[k];b.className=st[k]?'on':'off';show(k)};gas.appendChild(b)}
+const rotB=document.getElementById('rot');function setRot(v){ct.autoRotate=v;rotB.textContent='Tự xoay: '+(v?'Bật':'Tắt');rotB.className=v?'on':'off'}
+rotB.onclick=()=>setRot(!ct.autoRotate);
+document.getElementById('lab').onclick=e=>{const v=!labels[0].visible;labels.forEach(l=>l.visible=v);e.target.textContent='Nhãn: '+(v?'Bật':'Tắt');e.target.className=v?'on':'off'};
+let tw=null;
+document.getElementById('rs').onclick=()=>{tw={p:HOME.p.clone(),t:HOME.t.clone()}};const cl=document.getElementById('cl');cl.onclick=()=>{const m=document.getElementById('L').classList.toggle('mini');cl.textContent=m?'Mở rộng':'Thu gọn'};
+const FC={'Cây':[[0,6,17],[0,4,0]],'Rễ':[[0,-2.5,13],[0,-2.5,0]],'Lá':[[0,8,10],[0,7,0]],'Khí khổng':[[13,12.5,9],[13,12,0]],'Lục lạp':[[12,3.5,10],[12,3.5,0]],'Calvin':[[-11,5.5,10],[-11,5.5,0]]};
+const fc=document.getElementById('fc');
+for(const n in FC){const b=document.createElement('button');b.textContent=n;b.onclick=()=>{tw={p:V3(...FC[n][0]),t:V3(...FC[n][1])};setRot(false)};fc.appendChild(b)}
+function focusOn(k,pt){let T=pt.clone(),d=8,fr=false;
+if(['stomata','guard','epidermis','mesophyll'].includes(k)){T=P.clone();d=11;fr=true}
+else if(['chloroplast','grana'].includes(k)){T=C.clone();d=11;fr=true}
+else if(['calvin','rubp','pga','g3p','fix','red','reg'].includes(k)){T=R.clone();d=12;fr=true}
+else if(k=='sun')d=13;else if(k=='soil'){T=V3(0,-2.2,0);d=15}else if(k=='root')d=8;else if(k=='roothair')d=5.5;else if(k=='leaf')d=8;
+const dir=fr?V3(0,.12,1).normalize():cam.position.clone().sub(ct.target).normalize();
+tw={p:T.clone().addScaledVector(dir,d),t:T};setRot(false)}
+const rc=new THREE.Raycaster();rc.params.Line.threshold=.12;let dn=null;
+rd.domElement.addEventListener('pointerdown',e=>{dn=[e.clientX,e.clientY];tw=null});
+rd.domElement.addEventListener('pointerup',e=>{if(!dn||Math.hypot(e.clientX-dn[0],e.clientY-dn[1])>5)return;rc.setFromCamera(new THREE.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),cam);
+const h=rc.intersectObjects(pick.filter(o=>o.visible)).find(x=>x.object.userData.k);if(h){const k=h.object.userData.k;show(k);focusOn(k,h.point)}});
+addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();rd.setSize(innerWidth,innerHeight)});
+const clk=new THREE.Clock();
+(function loop(){requestAnimationFrame(loop);const t=clk.getElapsedTime();
+for(const k in PS){const o=PS[k],a=pts[k].geometry.attributes.position;for(let i=0;i<o.cv.length;i++){const p=o.cv[i].getPoint((o.ph[i]+t*o.sp[i])%1);a.setXYZ(i,p.x,p.y,p.z)}a.needsUpdate=true}
+orb.forEach((m,i)=>{const a=Math.PI/2+(i/orb.length)*6.283+t*.6;m.position.set(R.x+RR*Math.cos(a),R.y+RR*Math.sin(a),0);const sg=Math.floor((((a-Math.PI/2)/6.283)%1+1)%1*3);m.material.color.setHex(SC[sg]);m.material.emissive.setHex(SC[sg])});nodes.forEach((n,i)=>n.scale.setScalar(1+.1*Math.sin(t*2.2+i*2.1)));
+const o=.18*Math.sin(t*.8);PG.userData.g1.position.x=.75+o;PG.userData['g-1'].position.x=-.75-o;
+if(tw){cam.position.lerp(tw.p,.08);ct.target.lerp(tw.t,.08);if(cam.position.distanceTo(tw.p)<.05&&ct.target.distanceTo(tw.t)<.05)tw=null}
+ct.update();rd.render(sc,cam)})();
+</script></body></html>
